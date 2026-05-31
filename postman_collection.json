@@ -1,0 +1,621 @@
+{
+  "info": {
+    "name": "ZUT Lost and Found API",
+    "description": "Postman collection for testing the Express.js backend API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "itemId",
+      "value": "1"
+    },
+    {
+      "key": "claimId",
+      "value": "1"
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const data = pm.response.json();",
+              "pm.test('Health check returns OK status', function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "  pm.expect(data.status).to.equal('OK');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Register returns either a new user or duplicate email response', function () {",
+                  "  pm.expect([201, 409]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "  pm.expect(data).to.have.property('token');",
+                  "  pm.expect(data.token).to.be.a('string');",
+                  "  pm.expect(data.user).to.have.property('email');",
+                  "}",
+                  "if (pm.response.code === 409) {",
+                  "  pm.expect(data).to.have.property('error');",
+                  "  pm.expect(data.error).to.include('already exists');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Test Student\",\n  \"email\": \"student@test.com\",\n  \"password\": \"password123\",\n  \"student_id\": \"2026001\",\n  \"phone\": \"0970000000\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Login returns a token and user payload', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.have.property('token');",
+                  "  pm.expect(data.token).to.be.a('string');",
+                  "  pm.expect(data.user).to.have.property('email');",
+                  "});",
+                  "if (data.token) pm.collectionVariables.set('token', data.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@zut.edu.zm\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Current user endpoint returns authenticated user details', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.have.property('id');",
+                  "  pm.expect(data).to.have.property('email');",
+                  "  pm.expect(data.email).to.equal('admin@zut.edu.zm');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "item": [
+        {
+          "name": "List Items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('List items returns paginated item data', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.have.property('items');",
+                  "  pm.expect(data.items).to.be.an('array');",
+                  "  pm.expect(data).to.have.property('page');",
+                  "  pm.expect(data.page).to.equal(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/items?limit=12&page=1"
+          }
+        },
+        {
+          "name": "Get Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Get item returns a single item object', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.be.an('object');",
+                  "  pm.expect(data).to.have.property('id');",
+                  "  pm.expect(data.id).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/items/{{itemId}}"
+          }
+        },
+        {
+          "name": "Create Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Create item stores the new item and returns its id', function () {",
+                  "  pm.expect(pm.response.code).to.equal(201);",
+                  "  pm.expect(data).to.have.property('id');",
+                  "  pm.expect(data.title).to.equal('Black Backpack');",
+                  "  pm.expect(data.status).to.equal('found');",
+                  "});",
+                  "pm.collectionVariables.set('itemId', String(data.id));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Black Backpack",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Found near the library.",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "Bag",
+                  "type": "text"
+                },
+                {
+                  "key": "status",
+                  "value": "found",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "Library",
+                  "type": "text"
+                },
+                {
+                  "key": "date_lost_found",
+                  "value": "2026-05-26",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/items"
+          }
+        },
+        {
+          "name": "Update Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Update item reflects the new title', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data.id).to.equal(Number(pm.collectionVariables.get('itemId')));",
+                  "  pm.expect(data.title).to.equal('Updated Backpack');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Updated Backpack",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/items/{{itemId}}"
+          }
+        },
+        {
+          "name": "Delete Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Delete item returns the expected confirmation message', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data.message).to.equal('Item deleted successfully.');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/items/{{itemId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Claims",
+      "item": [
+        {
+          "name": "Submit Claim",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_id\": {{itemId}},\n  \"description\": \"This item belongs to me. I can identify the contents.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/claims"
+          }
+        },
+        {
+          "name": "My Claims",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/claims/mine"
+          }
+        },
+        {
+          "name": "Claims For Item",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/claims/item/{{itemId}}"
+          }
+        },
+        {
+          "name": "Approve Or Reject Claim",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": "{{baseUrl}}/api/claims/{{claimId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Dashboard Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Dashboard stats returns structured counts', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.have.property('items');",
+                  "  pm.expect(data).to.have.property('users');",
+                  "  pm.expect(data).to.have.property('claims');",
+                  "  pm.expect(data.items.total).to.be.a('number');",
+                  "  pm.expect(data.users.total).to.be.a('number');",
+                  "  pm.expect(data.claims.total).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/users/stats"
+          }
+        },
+        {
+          "name": "List Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('List users returns an array of user records', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.be.an('array');",
+                  "  pm.expect(data[0]).to.have.property('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/users"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Update profile returns the updated user fields', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.have.property('email');",
+                  "  pm.expect(data.full_name).to.equal('Updated Name');",
+                  "  pm.expect(data.phone).to.equal('0970000001');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Updated Name\",\n  \"phone\": \"0970000001\",\n  \"student_id\": \"2026001\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/profile"
+          }
+        },
+        {
+          "name": "Change User Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "pm.test('Change user role updates the returned role', function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "  pm.expect(data).to.have.property('id');",
+                  "  pm.expect(data.role).to.equal('staff');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"staff\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/role"
+          }
+        }
+      ]
+    }
+  ]
+}
